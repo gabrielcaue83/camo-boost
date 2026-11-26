@@ -27,8 +27,14 @@ lenis.stop();
 const pronto = document.fonts.ready.then(() => {
   const hero = iniciarHero();
   const vitrine = iniciarVitrine(document.querySelector('.vitrine'), { topoHero: hero.topo, lenis });
+  hero.arma.ligarVitrine(vitrine); // a arma da hero vira a da vitrine na troca de seção
   iniciarComoFunciona(document.querySelector('.missao'));
   iniciarPrecos(document.querySelector('.rumo'), { lenis });
+  // botão da hero: rola suave até os preços
+  document.querySelectorAll('a[href="#precos"]').forEach((a) => a.addEventListener('click', (e) => {
+    e.preventDefault();
+    lenis.scrollTo('#precos', { duration: reduzir ? 0 : 1.8 });
+  }));
   ScrollTrigger.refresh();
   if (import.meta.env.DEV) window.__site = { gsap, lenis, entrada: hero.entrada, vitrine, maestria: vitrine.maestria, ScrollTrigger };
   return hero;

@@ -53,9 +53,19 @@ export const DIVERGENCIA = {
   quebra: 0.7, // quanto cada losango entorta o reflexo
 };
 
+// Trinca do selo da Maestria: segurando o selo, a camo racha do meio da arma
+// para as pontas e vaza a luz das camos de Maestria pelas rachaduras.
+export const TRINCA = {
+  escala: 2.1, // células por unidade (maior = cacos menores)
+  largura: 0.035, // espessura da rachadura (em células)
+  brilho: 2.0, // força da luz que vaza
+  escurece: 0.88, // 0..1: quanto a camo escurece em volta enquanto racha (quase preta: a luz das rachaduras manda)
+};
+
 export const VARREDURA = {
-  inicio: -4.6, // unidades: onde a linha começa (antes da boca do cano)
-  fim: 4.7, // unidades: onde termina (depois da coronha)
+  inicio: -5.7, // unidades: onde a linha começa (antes da boca do cano; a linha é inclinada, por isso sobra)
+  fim: 5.8, // unidades: onde termina (depois da coronha)
+  inclinacao: 0.45, // a varredura corta a arma em diagonal ("/"), igual à cortina de cor da hero (0 = reta)
   borda: 0.015, // suavidade do corte entre as camos
   brilho: 3.2, // força da linha amarela
   largura: 0.045, // espessura da linha amarela
@@ -86,7 +96,7 @@ const GLSL_PRETAS = PECAS_PRETAS.map((c) => {
 }).join('\n');
 
 const GLSL = /* glsl */ `
-uniform float uCamoA, uCamoB, uTransicao, uTempo, uVerMascara;
+uniform float uCamoA, uCamoB, uTransicao, uTempo, uVerMascara, uTrinca;
 uniform vec3 uCorVarredura; // cor da linha da varredura (amarela; vermelha no desbloqueio da Maestria)
 varying vec3 vCamoPos;
 varying vec3 vCamoNormal;
@@ -109,9 +119,35 @@ vec2 plano(vec3 p, vec3 n) {
   return p.zy;
 }
 
+// posição ao longo da varredura: diagonal ("/" na tela, com a arma de lado)
+float varreX(vec3 p) { return p.x - p.y * ${VARREDURA.inclinacao.toFixed(3)}; }
+
 float caixa(vec3 p, vec4 b) { // b = x0, x1, y0, y1
   vec2 d = min(p.xy - b.xz, b.yw - p.xy);
   return smoothstep(0.0, 0.015, min(d.x, d.y));
+}
+
+// distância até a borda da célula de Voronoi (rachaduras); idc = célula
+float bordaVoronoi(vec2 x, out vec2 idc) {
+  vec2 nn = floor(x), ff = fract(x);
+  vec2 mg = vec2(0.0), mr = vec2(0.0);
+  float md = 8.0;
+  for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+    vec2 g = vec2(float(i), float(j));
+    vec2 o = vec2(hash2(nn + g), hash2(nn + g + 17.3));
+    vec2 r = g + o - ff;
+    float d = dot(r, r);
+    if (d < md) { md = d; mr = r; mg = g; }
+  }
+  md = 8.0;
+  for (int j = -2; j <= 2; j++) for (int i = -2; i <= 2; i++) {
+    vec2 g = mg + vec2(float(i), float(j));
+    vec2 o = vec2(hash2(nn + g), hash2(nn + g + 17.3));
+    vec2 r = g + o - ff;
+    if (dot(mr - r, mr - r) > 0.00001) md = min(md, dot(0.5 * (mr + r), normalize(r - mr)));
+  }
+  idc = nn + mg;
+  return md;
 }
 
 float pecaPreta(vec3 p, vec3 n) {
@@ -219,10 +255,10 @@ float irisFinal(vec3 p, vec3 n) {
   float v = irisPorId(uCamoA);
   if (uTransicao > 0.0) {
     float lim = mix(${VARREDURA.inicio.toFixed(3)}, ${VARREDURA.fim.toFixed(3)}, uTransicao);
-    float m = smoothstep(lim - ${VARREDURA.borda.toFixed(3)}, lim + ${VARREDURA.borda.toFixed(3)}, p.x);
+    float m = smoothstep(lim - ${VARREDURA.borda.toFixed(3)}, lim + ${VARREDURA.borda.toFixed(3)}, varreX(p));
     v = mix(irisPorId(uCamoB), v, m);
   }
-  return v * (1.0 - pecaPreta(p, n));
+  return v * (1.0 - pecaPreta(p, n)) * (1.0 - 0.85 * clamp(uTrinca, 0.0, 1.0)); // rachando: o reflexo apaga
 }
 float espessuraIris(vec3 p) {
   float v = snoise(p * ${DIVERGENCIA.escala.toFixed(3)} + vec3(0.0, 0.0, uTempo * ${DIVERGENCIA.velocidade.toFixed(3)}));
@@ -241,10 +277,10 @@ float vernizFinal(vec3 p, vec3 n) {
   float v = vernizPorId(uCamoA);
   if (uTransicao > 0.0) {
     float lim = mix(${VARREDURA.inicio.toFixed(3)}, ${VARREDURA.fim.toFixed(3)}, uTransicao);
-    float m = smoothstep(lim - ${VARREDURA.borda.toFixed(3)}, lim + ${VARREDURA.borda.toFixed(3)}, p.x);
+    float m = smoothstep(lim - ${VARREDURA.borda.toFixed(3)}, lim + ${VARREDURA.borda.toFixed(3)}, varreX(p));
     v = mix(vernizPorId(uCamoB), v, m);
   }
-  return v * (1.0 - pecaPreta(p, n));
+  return v * (1.0 - pecaPreta(p, n)) * (1.0 - 0.85 * clamp(uTrinca, 0.0, 1.0)); // rachando: o reflexo apaga
 }
 
 Camo camoPorId(float id, vec3 p, vec3 n) {
@@ -260,13 +296,37 @@ Camo camoFinal(vec3 p, vec3 n) {
   if (uTransicao > 0.0) {
     Camo b = camoPorId(uCamoB, p, n);
     float lim = mix(${VARREDURA.inicio.toFixed(3)}, ${VARREDURA.fim.toFixed(3)}, uTransicao);
-    float m = smoothstep(lim - ${VARREDURA.borda.toFixed(3)}, lim + ${VARREDURA.borda.toFixed(3)}, p.x); // 1 = ainda a antiga
-    float faixa = exp(-pow((p.x - lim) / ${VARREDURA.largura.toFixed(3)}, 2.0)) * step(uTransicao, 0.999);
+    float m = smoothstep(lim - ${VARREDURA.borda.toFixed(3)}, lim + ${VARREDURA.borda.toFixed(3)}, varreX(p)); // 1 = ainda a antiga
+    float faixa = exp(-pow((varreX(p) - lim) / ${VARREDURA.largura.toFixed(3)}, 2.0)) * step(uTransicao, 0.999);
     s.cor = mix(b.cor, s.cor, m);
     s.metal = mix(b.metal, s.metal, m);
     s.rugo = mix(b.rugo, s.rugo, m);
     s.inclina = mix(b.inclina, s.inclina, m);
     s.brilho = mix(b.brilho, s.brilho, m) + uCorVarredura * faixa * ${VARREDURA.brilho.toFixed(2)};
+  }
+  // trinca do selo da Maestria (0 = inteira, 1 = toda rachada, >1 = estourando)
+  if (uTrinca > 0.001) {
+    vec2 uvT = plano(p, n) * ${TRINCA.escala.toFixed(3)} + vec2(snoise(p * 1.3), snoise(p * 1.3 + 4.0)) * 0.25;
+    vec2 idc;
+    float bT = bordaVoronoi(uvT, idc);
+    float hc = hash2(idc);
+    // as rachaduras nascem no meio da arma e correm para as pontas
+    float alcance = uTrinca * 1.3 - abs(p.x) / 3.8 - hc * 0.25;
+    float aberta = smoothstep(0.0, 0.12, alcance);
+    float larg = ${TRINCA.largura.toFixed(3)} * (0.4 + 0.6 * aberta) * (1.0 + min(uTrinca, 1.0) * 0.6);
+    float linhaT = (1.0 - smoothstep(0.0, larg, bT)) * aberta;
+    float haloT = pow(1.0 - smoothstep(0.0, larg * 3.5, bT), 2.0) * aberta * 0.4;
+    // luz das camos de Maestria: magenta (Mercurial), violeta (Polyatomic), carmim (Orion)
+    float kc = snoise(p * 0.35 + vec3(0.0, 0.0, uTempo * 0.3)) * 0.5 + 0.5;
+    vec3 vaza = mix(lin(vec3(1.0, 0.1, 0.55)), lin(vec3(0.55, 0.25, 1.0)), smoothstep(0.3, 0.6, kc));
+    vaza = mix(vaza, lin(vec3(1.0, 0.1, 0.18)), smoothstep(0.65, 0.9, kc));
+    s.brilho *= 1.0 - 0.9 * min(uTrinca, 1.0); // o brilho da camo apaga: só as rachaduras acendem
+    float pulsoT = 0.8 + 0.2 * sin(uTempo * 9.0 + hc * 6.28);
+    s.brilho += vaza * (linhaT + haloT) * ${TRINCA.brilho.toFixed(2)} * pulsoT * (0.5 + min(uTrinca, 1.0));
+    s.brilho += vec3(1.0, 0.92, 0.97) * (linhaT * 6.0 + aberta * 1.5) * smoothstep(1.0, 1.4, uTrinca); // estouro: fica branco
+    s.cor *= 1.0 - ${TRINCA.escurece.toFixed(2)} * min(uTrinca, 1.0) * (1.0 - linhaT);
+    s.metal *= 1.0 - 0.6 * min(uTrinca, 1.0); // menos espelho: a luz das rachaduras manda
+    s.rugo = mix(s.rugo, 0.45, min(uTrinca, 1.0) * 0.6);
   }
   // peças pretas (polímero fosco), iguais em todas as camos
   float preta = pecaPreta(p, n);
@@ -287,6 +347,7 @@ export function criarMateriais() {
     uTransicao: { value: 0 },
     uTempo: { value: 0 },
     uVerMascara: { value: 0 },
+    uTrinca: { value: 0 }, // selo da Maestria: a camo racha e vaza luz
     uCorVarredura: { value: new THREE.Vector3(1.0, 0.82, 0.0) }, // mesmo AMARELO do shader
   };
 

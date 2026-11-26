@@ -6,7 +6,8 @@ import { criarEstudio, distanciaCamera } from './arma/estudio.js';
 
 // Preloader: o contorno da arma se desenha conforme o download real avança;
 // quando chega, vira a arma 3D, que passa por todas as camos; a tela sobe
-// como uma cortina e a hero entra por baixo.
+// como uma cortina e a hero entra por baixo. A arma NÃO sai: a da hero nasce
+// na mesma pose e camo, então ela parece ficar no lugar (heroArma.js).
 
 // ---------------------------------------------------------------------------
 // CONFIGS
@@ -149,8 +150,6 @@ export function iniciarPreloader({ esperar, aoSair, reduzir }) {
       },
     });
     tl.to(el, { clipPath: 'inset(0% 0% 100% 0%)', duration: P.saida, ease: 'power3.inOut' }, 0)
-      .to(pivo.position, { y: 2.2, duration: P.saida, ease: 'power3.in' }, 0)
-      .to(pivo.rotation, { y: `+=${Math.PI * 0.6}`, duration: P.saida, ease: 'power3.in' }, 0)
       .to([nome, el.querySelector('.preloader__contador')], { opacity: 0, y: -20, duration: P.saida * 0.4, ease: 'power2.in' }, 0)
       .call(() => esperar.then(aoSair), null, P.saida * P.heroEntra);
   }

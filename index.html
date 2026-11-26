@@ -43,6 +43,7 @@
         <!-- Fundo: topografia militar viva (WebGL) -->
         <div class="hero__fundo" aria-hidden="true">
           <canvas class="topo"></canvas>
+          <div class="hero__halo"></div>
           <div class="hero__vinheta"></div>
           <div class="hero__grao"></div>
         </div>
@@ -56,6 +57,25 @@
           <!-- "부스트" = "boost" em coreano, pincelada amarela -->
           <span class="titulo__pincel" aria-hidden="true" lang="ko"><span>부</span><span>스</span><span>트</span></span>
         </h1>
+
+        <!-- linha de luz da cortina de cor (passa junto com a troca de camo) -->
+        <span class="hero__cortina" aria-hidden="true"></span>
+
+        <!-- a arma do preloader continua aqui, na frente do "GRIND" -->
+        <canvas class="hero__arma" aria-hidden="true"></canvas>
+
+        <!-- o grind (números que a barra amarela risca) e a oferta -->
+        <div class="hero__base">
+          <dl class="hero__grind" aria-label="O grind que você pula">
+            <div><dt>Armas</dt><dd><b data-numero="33">33</b><i class="hero__risco" aria-hidden="true"></i></dd></div>
+            <div><dt>Desafios</dt><dd><b data-numero="1400" data-mais>1.400+</b><i class="hero__risco" aria-hidden="true"></i></dd></div>
+            <div><dt>Horas de jogo</dt><dd>~<b data-numero="600">600</b><i class="hero__risco" aria-hidden="true"></i></dd></div>
+          </dl>
+          <div class="hero__oferta">
+            <p class="hero__linha">Boost de camuflagem para Warzone. Da Ouro à Divergência, sem você precisar jogar o grind.</p>
+            <a class="botao botao--amarelo" href="#precos"><span class="botao__rolo" data-texto="Ver preços"><span>Ver preços</span></span></a>
+          </div>
+        </div>
       </section>
 
       <!-- Degustação das camuflagens: arma 3D flutuando, a camo troca com a rolagem -->
@@ -70,7 +90,7 @@
         <canvas class="vitrine__canvas" aria-label="Arma em 3D: arraste para girar"></canvas>
 
         <!-- Camos de Maestria: um segundo estado da própria vitrine. Abre depois da
-             Divergência, segurando a trava: a arma continua a mesma e a seção se transforma.
+             Divergência, segurando o selo: a arma estoura e a seção se transforma.
              "atrás" fica embaixo da arma (fundo, nome, mira); "frente" fica por cima (textos e trilha). -->
         <div class="maestria-atras" aria-hidden="true">
           <div class="maestria__fundo"></div>
@@ -82,8 +102,9 @@
         </div>
         <div class="maestria-frente" id="maestria" inert>
           <header class="maestria__cabeca">
-            <p class="maestria__rotulo-caixa"><span class="maestria__rotulo">Acesso liberado · Depois da Divergência</span></p>
+            <p class="maestria__rotulo-caixa"><span class="maestria__rotulo">Selo rompido · Depois da Divergência</span></p>
             <h2 class="maestria__titulo"><span><span>Camos de</span></span><span><span>Maestria</span></span></h2>
+            <p class="maestria__carimbo" aria-hidden="true"><span lang="ko">해제</span> Liberado</p>
             <p class="maestria__frente"></p>
           </header>
           <div class="maestria__painel"></div>
@@ -91,12 +112,9 @@
           <p class="maestria__dica" aria-hidden="true">Arraste para girar</p>
         </div>
 
-        <!-- tela do desbloqueio: apaga tudo por um instante e mostra 해제 ("liberado") -->
-        <div class="desbloqueio" aria-hidden="true">
-          <p class="desbloqueio__hangul" lang="ko"><span>해</span><span>제</span></p>
-          <p class="desbloqueio__linha desbloqueio__titulo">Acesso concedido</p>
-          <p class="desbloqueio__linha desbloqueio__sub"></p>
-        </div>
+        <!-- estouro do selo da Maestria: clarão e onda de choque -->
+        <div class="clarao" aria-hidden="true"><span class="clarao__nucleo"></span><span class="clarao__raios"></span></div>
+        <div class="onda" aria-hidden="true"></div>
       </section>
 
       <!-- Como funciona: briefing da operação (rota que se desenha com a rolagem) -->

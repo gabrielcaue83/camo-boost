@@ -1,13 +1,14 @@
 import { gsap } from 'gsap';
 import { CAMOS } from './camos.js';
 import { DESAFIOS } from './desafios.js';
+import { EASE } from '../movimento.js';
 
 // Trilha de mestria (à esquerda: os ícones em sequência, clicáveis) e ficha
 // do desafio (canto direito: nome, desafio, quantidade com contador, losangos
 // que acendem um a um e qual camo ela libera).
 
 export const MESTRIA = {
-  sai: 0.3, // s: textos da ficha saindo
+  sai: 0.18, // s: textos da ficha saindo
   entra: 0.75, // s: textos da ficha entrando
   intervalo: 0.06, // s entre um texto e outro
   contador: 1.1, // s: o número correndo até a quantidade
@@ -145,9 +146,9 @@ export function montarMestria(secao, { amostras, aoEscolher, aoMaestria }) {
       return;
     }
     tl = gsap.timeline()
-      .to(blocos, { yPercent: -110, opacity: 0, duration: MESTRIA.sai, ease: 'power2.in', stagger: MESTRIA.intervalo * 0.5 })
+      .to(blocos, { yPercent: -110, opacity: 0, duration: MESTRIA.sai, ease: EASE.saida, stagger: 0.015 })
       .call(() => preencher(i))
-      .fromTo(blocos, { yPercent: 110, opacity: 0 }, { yPercent: 0, opacity: 1, duration: MESTRIA.entra, ease: 'expo.out', stagger: MESTRIA.intervalo })
+      .fromTo(blocos, { yPercent: 110, opacity: 0 }, { yPercent: 0, opacity: 1, duration: MESTRIA.entra, ease: EASE.saida, stagger: MESTRIA.intervalo })
       .to(contador, {
         v: d.quantidade || 0, duration: MESTRIA.contador, ease: 'power2.out',
         onUpdate: () => { el.qtd.textContent = Math.round(contador.v); },

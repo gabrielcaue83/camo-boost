@@ -81,6 +81,10 @@ uniform vec3 uCorLinha, uCorDestaque; // cores (sRGB cru, iguais ao CSS)
 // faixa de altura uEmenda no topo, cor e força vêm das da seção de cima
 uniform float uOrigemY, uEmenda, uForcaTopo;
 uniform vec3 uCorTopo, uDestaqueTopo;
+// cortina de cor: do lado do corte (uCortina, px CSS) as cores já são as novas.
+// uCortinaLado: 1 = as novas entram pela esquerda, -1 = pela direita, 0 = parada
+uniform vec3 uCorNova, uLinhaNova;
+uniform float uCortina, uCortinaLado, uCortinaInclina; // inclina: px de deslocamento por px de altura ("/")
 uniform vec2 uTela, uMouse, uDesloc; // px CSS, y para baixo
 ${NOISE}
 
@@ -130,9 +134,15 @@ void main() {
 
   // destaque: cor fixa ou arco-íris (uIris = 1) que corre pelo mapa
   vec3 arco = clamp(abs(fract(n * 1.5 + uTempo * 0.04 + px.x / uTela.x * 0.5 + vec3(0.0, 2.0, 1.0) / 3.0) * 6.0 - 3.0) - 1.0, 0.0, 1.0);
-  vec3 destaque = mix(uCorDestaque, mix(vec3(1.0), arco, 0.75), uIris);
+  // borda esfumaçada (névoa), não um corte seco
+  float diag = px.x + (px.y - uTela.y * 0.5) * uCortinaInclina; // posição medida perpendicular à reta inclinada
+  float fumo = smoothstep(uCortina - 140.0, uCortina + 140.0, diag);
+  float nova = uCortinaLado > 0.5 ? 1.0 - fumo : (uCortinaLado < -0.5 ? fumo : 0.0);
+  vec3 corDestaque = mix(uCorDestaque, uCorNova, nova);
+  vec3 corLinha = mix(uCorLinha, uLinhaNova, nova);
+  vec3 destaque = mix(corDestaque, mix(vec3(1.0), arco, 0.75), uIris);
   float k = uEmenda > 0.5 ? smoothstep(0.0, uEmenda, px.y) : 1.0; // 0 no topo (cores da seção de cima) → 1
-  vec3 cor = mix(mix(uCorTopo, uCorLinha, k), mix(uDestaqueTopo, destaque, k), clamp(amarelo * 1.4 * linhas, 0.0, 1.0));
+  vec3 cor = mix(mix(uCorTopo, corLinha, k), mix(uDestaqueTopo, destaque, k), clamp(amarelo * 1.4 * linhas, 0.0, 1.0));
   a *= mix(uForcaTopo, uForca, k);
   gl_FragColor = vec4(cor * a, a);
 }`;
@@ -175,7 +185,7 @@ export function criarTopo(canvas, { forca = 1 } = {}) {
   gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
 
   const U = {};
-  for (const nome of ['uTempo', 'uDpr', 'uEntrada', 'uFase', 'uLuz', 'uTela', 'uMouse', 'uDesloc', 'uIris', 'uForca', 'uCorLinha', 'uCorDestaque', 'uOrigemY', 'uEmenda', 'uForcaTopo', 'uCorTopo', 'uDestaqueTopo']) U[nome] = gl.getUniformLocation(prog, nome);
+  for (const nome of ['uTempo', 'uDpr', 'uEntrada', 'uFase', 'uLuz', 'uTela', 'uMouse', 'uDesloc', 'uIris', 'uForca', 'uCorLinha', 'uCorDestaque', 'uOrigemY', 'uEmenda', 'uForcaTopo', 'uCorTopo', 'uDestaqueTopo', 'uCorNova', 'uLinhaNova', 'uCortina', 'uCortinaLado', 'uCortinaInclina']) U[nome] = gl.getUniformLocation(prog, nome);
 
   const dpr = Math.min(window.devicePixelRatio || 1, TOPO.dpr);
   let w = 0, h = 0;
@@ -196,6 +206,8 @@ export function criarTopo(canvas, { forca = 1 } = {}) {
     linha: rgb(CORES.linha), destaque: rgb(CORES.amarelo), iris: 0, forca,
     // emenda com a seção de cima (desligada = 0)
     origemY: 0, emenda: 0, corTopo: rgb(CORES.linha), destaqueTopo: rgb(CORES.amarelo), forcaTopo: 1,
+    // cortina de cor (troca de camo na hero): cores novas e onde está o corte
+    corNova: rgb(CORES.amarelo), linhaNova: rgb(CORES.linha), cortina: 0, cortinaLado: 0, cortinaInclina: 0,
   };
   const parado = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -223,6 +235,11 @@ export function criarTopo(canvas, { forca = 1 } = {}) {
     gl.uniform1f(U.uForcaTopo, estado.forcaTopo);
     gl.uniform3fv(U.uCorTopo, estado.corTopo);
     gl.uniform3fv(U.uDestaqueTopo, estado.destaqueTopo);
+    gl.uniform3fv(U.uCorNova, estado.corNova);
+    gl.uniform3fv(U.uLinhaNova, estado.linhaNova);
+    gl.uniform1f(U.uCortina, estado.cortina);
+    gl.uniform1f(U.uCortinaLado, estado.cortinaLado);
+    gl.uniform1f(U.uCortinaInclina, estado.cortinaInclina);
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.drawArrays(gl.TRIANGLES, 0, 3);

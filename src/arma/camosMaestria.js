@@ -36,7 +36,7 @@ export const CAMOS_MAESTRIA = [
   },
   {
     id: 6, nome: 'Orion Reforged', modo: 'mp', nivel: 3,
-    fundo: { centro: '#c0143c', borda: '#16030a' },
+    fundo: { centro: '#3a0a26', borda: '#040206' }, // céu noturno: escuro para a arma ser a luz
     desafio: 'Exige a Polyatomic Reforged. O último desafio de Maestria do Multiplayer.',
     quantidade: null, unidade: '',
   },
@@ -68,28 +68,40 @@ export const POLYATOMIC = {
   rugosidade: 0.14,
 };
 
-// Orion Reforged (reativa): o espaço dentro de um vidro carmim que brilha
-// sozinho. Base magenta/vinho (clara em umas partes, quase preta em outras),
-// nuvens de fogo (vermelho -> laranja -> amarelo quase branco) e nuvens
-// violeta, finas e granuladas, correndo pela arma, e uma poeira de estrelas
-// na cor de onde está. Referência: vídeo da arma à noite (nov/2026).
+// Orion Reforged (reativa, mas quase parada): vidro carmim/magenta bem
+// envernizado, nebulosa rosa/violeta com miolo laranja só aqui e ali e uma
+// poeira densa de estrelas brancas agrupada em "constelações". O escuro não
+// fica parado: é um apagão que vem e vai em alguns pontos (a área escurece de
+// leve, depois a mancha fecha e toma forma, depois volta).
+// Referências: dois shorts da arma (nov/2026).
 export const ORION = {
-  escalaBase: 0.32, // tamanho das manchas claras/escuras do vidro (maior = menores)
-  contraste: [-0.05, 0.25], // faixa do ruído onde o vidro passa de escuro a claro (mais estreita = mais contraste)
-  escala: 0.75, // tamanho das nuvens de fogo (maior = menores)
-  vel: 0.09, // quão rápido a nebulosa se transforma (camo reativa)
-  deriva: 2.2, // quanto ela corre ao longo da arma (do cano para a coronha)
-  cobertura: 0.08, // -1..1: quanto da arma o fogo cobre (menor = cobre mais)
-  brilho: 5.0, // força da luz própria do fogo
-  violeta: 1.9, // força da luz própria das nuvens violeta
-  violetaCobertura: 0.08, // -1..1: quanto da arma o violeta cobre (menor = cobre mais)
-  autoBrilho: 0.35, // brilho próprio do vidro (visível no escuro)
-  grao: 0.6, // 0..1: textura granulada de poeira dentro das nuvens
-  poeira: { celulas: 18.0, limiar: 0.62, raio: 0.26, forca: 0.6 }, // estrelas finas: células por unidade / 0..1 (maior = menos) / tamanho na célula / brilho
-  medias: { celulas: 5.0, limiar: 0.86, raio: 0.15, forca: 1.6 }, // estrelas maiores, poucas
-  cintila: 3.0, // velocidade do cintilar
+  escalaBase: 0.3, // tamanho das manchas claras/escuras do vidro (maior = menores)
+  contraste: [-0.3, 0.5], // faixa do ruído onde o vidro passa de vinho a magenta (larga = suave, sem preto)
+  escala: 0.6, // tamanho das nuvens da nebulosa (maior = menores)
+  vel: 0.018, // quão rápido a nebulosa se transforma (bem devagar: o foco é a luz)
+  deriva: 0.25, // quanto ela corre ao longo da arma
+  cobertura: 0.0, // -1..1: quanto da arma a nebulosa rosa cobre (menor = cobre mais)
+  brilho: 1.1, // luz própria da nebulosa rosa
+  miolo: 0.55, // 0..1: onde a nebulosa fica laranja/dourada (maior = menos laranja)
+  violeta: 1.3, // luz própria das nuvens violeta
+  violetaCobertura: 0.05, // -1..1: quanto da arma o violeta cobre (menor = cobre mais)
+  autoBrilho: 0.16, // brilho próprio do vidro (visível no escuro)
+  grao: 0.55, // 0..1: textura granulada de poeira dentro das nuvens
+  poeira: { celulas: 30.0, limiar: 0.5, raio: 0.24, forca: 1.1 }, // estrelinhas: células por unidade / 0..1 (maior = menos) / tamanho / brilho
+  medias: { celulas: 9.0, limiar: 0.8, raio: 0.16, forca: 2.2 }, // estrelas médias
+  guias: { celulas: 3.2, limiar: 0.72, raio: 0.09, forca: 4.0, raios: 0.9 }, // estrelas-guia das constelações, com brilho em cruz
+  agrupa: 0.45, // 0..1: o quanto as estrelas se juntam em grupos (constelações)
+  cintila: 1.6, // velocidade do cintilar (lento)
+  apagao: {
+    ciclo: 13.0, // segundos de um apagão (escurece, toma forma, volta)
+    onde: -0.3, // -1..1: quanto da arma pode apagar (maior = menos lugares)
+    escala: 0.5, // tamanho das manchas (maior = menores)
+    difuso: 0.5, // 0..1: o quanto a área escurece na primeira fase (difusa)
+    forte: 0.9, // 0..1: o quanto a mancha escurece quando toma forma
+    estrelas: 0.35, // 0..1: quanto as estrelas apagam junto (baixo = continuam brilhando no escuro)
+  },
   metal: 0.2,
-  rugosidade: 0.12,
+  rugosidade: 0.06,
 };
 
 // verniz e película iridescente de cada camo de maestria, 0..1 (índice = id - 4)
@@ -190,60 +202,77 @@ Camo camoPolyatomic(vec3 p, vec3 n) {
 
 // --- ORION REFORGED
 Camo camoOrion(vec3 p, vec3 n) {
-  // camo reativa: o vidro e a nebulosa correm devagar ao longo da arma
-  // (do cano para a coronha) e as nuvens se dobram enquanto andam
+  // reativa mas quase parada: a nebulosa só respira e escorre bem devagar
   float t = uTempo * ${f(ORION.vel)};
   vec3 corre = vec3(-t * ${f(ORION.deriva)}, 0.0, 0.0);
-  // vidro carmim: manchas grandes claras (magenta) e escuras (vinho quase preto)
+  // vidro carmim: de vinho profundo a magenta, suave (o escuro forte vem do apagão)
   float base = fbm3(p * ${f(ORION.escalaBase)} + corre * 0.6 + vec3(4.0, 1.0, t * 0.5));
   float claro = smoothstep(${f(ORION.contraste[0])}, ${f(ORION.contraste[1])}, base);
-  vec3 c = mix(lin(vec3(0.025, 0.0, 0.01)), lin(vec3(0.6, 0.035, 0.2)), claro);
+  vec3 c = mix(lin(vec3(0.1, 0.0, 0.03)), lin(vec3(0.6, 0.02, 0.17)), claro);
 
-  // nebulosa: nuvens macias dobradas sobre si mesmas, só em parte da arma
+  // nebulosa rosa: nuvens macias dobradas sobre si mesmas
   vec3 q = p * ${f(ORION.escala)} + corre + vec3(0.0, 0.0, t);
   vec3 w = vec3(fbm3(q + vec3(3.1, 0.0, t * 0.7)), fbm3(q + vec3(7.7, 0.0, -t * 0.7)), 0.0);
   float nb = fbm3(q + 1.4 * w);
-  float dens = smoothstep(${f(ORION.cobertura)}, ${f(ORION.cobertura + 0.5)}, nb);
-  // grão de poeira cósmica por dentro da nuvem (anda junto com ela)
+  float dens = smoothstep(${f(ORION.cobertura)}, ${f(ORION.cobertura + 0.55)}, nb);
   float grao = snoise(q * 16.0 + 3.0) * 0.5 + snoise(q * 34.0) * 0.5;
   float neb = dens * (1.0 - ${f(ORION.grao)} + ${f(ORION.grao)} * (0.5 + 0.5 * grao));
-  // cor do fogo pela intensidade: vermelho -> laranja -> amarelo quase branco
-  vec3 fogo = mix(lin(vec3(0.85, 0.08, 0.06)), lin(vec3(1.0, 0.4, 0.08)), smoothstep(0.25, 0.6, neb));
-  fogo = mix(fogo, lin(vec3(1.0, 0.85, 0.55)), smoothstep(0.65, 0.95, neb));
-  vec3 brilho = fogo * pow(neb, 1.6) * ${f(ORION.brilho)};
-  c = mix(c, fogo * 0.3, dens * 0.5); // a nuvem tinge o vidro por baixo
+  // rosa quente -> vermelho -> miolo laranja/dourado só onde a nuvem é mais densa
+  vec3 nuvem = mix(lin(vec3(0.95, 0.1, 0.35)), lin(vec3(1.0, 0.2, 0.14)), smoothstep(0.3, 0.6, neb));
+  nuvem = mix(nuvem, lin(vec3(1.0, 0.62, 0.3)), smoothstep(${f(ORION.miolo)}, ${f(ORION.miolo + 0.3)}, neb));
+  vec3 brilho = nuvem * pow(neb, 1.5) * ${f(ORION.brilho)};
+  c = mix(c, nuvem * 0.35, dens * 0.35);
 
-  // nuvens violeta: um segundo campo, menor, que ocupa o que o fogo deixa livre
+  // nuvens violeta, finas, onde a rosa deixa livre
   float vn = fbm3(q * 1.35 + vec3(11.0, 5.0, -t) + 0.8 * w);
-  float vio = smoothstep(${f(ORION.violetaCobertura)}, ${f(ORION.violetaCobertura + 0.45)}, vn) * (1.0 - dens * 0.7);
+  float vio = smoothstep(${f(ORION.violetaCobertura)}, ${f(ORION.violetaCobertura + 0.45)}, vn) * (1.0 - dens * 0.6);
   float grao2 = snoise(q * 22.0 + 9.0) * 0.5 + snoise(q * 45.0 + 4.0) * 0.5;
   float vioG = vio * (1.0 - ${f(ORION.grao)} + ${f(ORION.grao)} * (0.5 + 0.5 * grao2));
-  vec3 violeta = mix(lin(vec3(0.42, 0.1, 0.85)), lin(vec3(0.78, 0.55, 1.0)), smoothstep(0.5, 0.9, vioG));
+  vec3 violeta = mix(lin(vec3(0.5, 0.12, 0.9)), lin(vec3(0.85, 0.6, 1.0)), smoothstep(0.5, 0.9, vioG));
   brilho += violeta * pow(vioG, 1.4) * ${f(ORION.violeta)};
-  c = mix(c, violeta * 0.2, vio * 0.4);
-  // brilho próprio do vidro: a camo continua visível mesmo no escuro
-  brilho += c * ${f(ORION.autoBrilho)};
+  c = mix(c, violeta * 0.3, vio * 0.45);
+  brilho += c * ${f(ORION.autoBrilho)}; // o vidro brilha sozinho
 
-  // cor das estrelas puxada da paleta do lugar onde estão: rosa no vidro claro,
-  // pêssego/dourado dentro do fogo; no vidro escuro ficam claras (senão somem)
-  vec3 corVidro = lin(vec3(1.0, 0.62, 0.74));
-  vec3 corFogo = mix(lin(vec3(1.0, 0.6, 0.45)), lin(vec3(1.0, 0.88, 0.7)), smoothstep(0.4, 0.9, neb));
-  vec3 corLocal = mix(corVidro, corFogo, smoothstep(0.1, 0.5, dens));
-  corLocal = mix(corLocal, lin(vec3(0.85, 0.7, 1.0)), smoothstep(0.1, 0.5, vio) * (1.0 - dens)); // lilás nas nuvens violeta
-  vec3 corEst = mix(corLocal, lin(vec3(1.0, 0.9, 0.95)), (1.0 - claro) * (1.0 - dens));
+  // apagão: em alguns pontos a área escurece de leve (difuso), depois a mancha
+  // fecha e toma forma (borda definida) e depois tudo volta. A fase muda devagar
+  // pela arma, então cada lugar apaga num momento diferente.
+  float ph = snoise(p * 0.16 + vec3(7.0, 2.0, 5.0)) * 0.5 + 0.5;
+  float ciclo = fract(uTempo / ${f(ORION.apagao.ciclo)} + ph * 1.7);
+  float env = smoothstep(0.0, 0.4, ciclo) * (1.0 - smoothstep(0.7, 0.98, ciclo));
+  float onde = smoothstep(${f(ORION.apagao.onde)}, ${f(ORION.apagao.onde + 0.35)}, snoise(p * 0.2 + vec3(1.0, 8.0, 3.0)));
+  env *= onde;
+  float forma = fbm3(p * ${f(ORION.apagao.escala)} + vec3(2.0, 9.0, 4.0)) + snoise(p * 2.2 + 5.0) * 0.08;
+  float f1 = smoothstep(0.0, 0.55, env); // escurece difuso
+  float f2 = smoothstep(0.4, 1.0, env); // a mancha fecha e toma forma
+  float borda = mix(0.6, 0.05, f2);
+  float mancha = smoothstep(0.05, 0.05 + borda, -forma) * f2; // -forma alto = dentro da mancha
+  float apaga = max(f1 * ${f(ORION.apagao.difuso)} * smoothstep(-0.5, 0.25, 0.2 - forma), mancha * ${f(ORION.apagao.forte)});
+  c *= 1.0 - apaga * 0.92;
+  brilho *= 1.0 - apaga * 0.95;
 
-  // poeira de estrelas: muitas e pequenas (mais densas na nuvem), indo junto com a camo
-  vec2 uv = plano(p + corre * 0.4, n);
-  float hs;
-  vec2 v;
-  float fina = estrela(uv, ${f(ORION.poeira.celulas)}, ${f(ORION.poeira.limiar)} - dens * 0.2, ${f(ORION.poeira.raio)}, hs, v);
-  float pisca = 0.35 + 0.65 * pow(0.5 + 0.5 * sin(uTempo * (${f(ORION.cintila)} + hs * 4.0) + hs * 60.0), 2.0);
-  brilho += corEst * fina * pisca * ${f(ORION.poeira.forca)} * (0.5 + hs);
-  // estrelas maiores, na mesma paleta (umas poucas puxando para o lilás)
-  float media = estrela(uv + 0.37, ${f(ORION.medias.celulas)}, ${f(ORION.medias.limiar)}, ${f(ORION.medias.raio)}, hs, v);
-  float pisca2 = 0.5 + 0.5 * sin(uTempo * (1.4 + hs * 2.0) + hs * 30.0);
-  vec3 corMedia = mix(corEst, lin(vec3(0.85, 0.7, 1.0)), step(0.95, hs) * 0.6);
-  brilho += corMedia * media * (0.4 + 0.6 * pisca2) * ${f(ORION.medias.forca)};
+  // constelações: as estrelas se juntam em grupos (campo baixo de ruído) e
+  // ficam fixas na arma; brancas, levemente tingidas pela cor de onde estão
+  vec2 uv = plano(p, n);
+  float grupo = smoothstep(-0.4, 0.6, snoise(vec3(uv * 0.55, 3.0)));
+  float junta = mix(1.0, grupo, ${f(ORION.agrupa)});
+  vec3 corEst = mix(lin(vec3(1.0, 0.92, 0.96)), mix(nuvem, violeta, vio) * 0.5 + 0.5, 0.25);
+  float hs; vec2 v;
+  float fina = estrela(uv, ${f(ORION.poeira.celulas)}, ${f(ORION.poeira.limiar)} + (1.0 - junta) * 0.35, ${f(ORION.poeira.raio)}, hs, v);
+  float pisca = 0.55 + 0.45 * sin(uTempo * (${f(ORION.cintila)} + hs * 2.0) + hs * 60.0);
+  vec3 est = corEst * fina * pisca * ${f(ORION.poeira.forca)} * (0.4 + hs);
+  float media = estrela(uv + 0.37, ${f(ORION.medias.celulas)}, ${f(ORION.medias.limiar)} + (1.0 - junta) * 0.2, ${f(ORION.medias.raio)}, hs, v);
+  float pisca2 = 0.6 + 0.4 * sin(uTempo * (0.9 + hs * 1.5) + hs * 30.0);
+  est += corEst * media * pisca2 * ${f(ORION.medias.forca)};
+  // estrelas-guia: poucas, mais fortes, com halo e um brilho em cruz
+  float guia = estrela(uv + 0.71, ${f(ORION.guias.celulas)}, ${f(ORION.guias.limiar)}, ${f(ORION.guias.raio)}, hs, v);
+  float temGuia = step(${f(ORION.guias.limiar)}, hs);
+  float r = length(v);
+  float halo = exp(-r * 22.0) * 0.5;
+  float cruz = (exp(-abs(v.x) * 140.0) * exp(-abs(v.y) * 9.0) + exp(-abs(v.y) * 140.0) * exp(-abs(v.x) * 9.0)) * ${f(ORION.guias.raios)};
+  float pisca3 = 0.7 + 0.3 * sin(uTempo * 0.7 + hs * 40.0);
+  est += lin(vec3(1.0, 0.95, 0.98)) * (guia + temGuia * (halo + cruz)) * pisca3 * ${f(ORION.guias.forca)};
+  brilho += est * (1.0 - apaga * ${f(ORION.apagao.estrelas)});
+
   return Camo(c, ${f(ORION.metal)}, ${f(ORION.rugosidade)}, brilho, ZERO);
 }
 
