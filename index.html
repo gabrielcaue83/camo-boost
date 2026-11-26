@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pt-BR" class="carregando">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0a0a0b" />
+    <title>CAMO//BOOST — Boost de camuflagem para Warzone</title>
+    <meta name="description" content="Boost de camuflagens para Warzone." />
+    <!-- CSS crítico: evita piscar o site cru antes do CSS/JS carregar (e já prepara o terreno do preloader) -->
+    <style>
+      html, body { background: #0a0a0b; margin: 0; }
+      html.carregando { overflow: hidden; }
+      .hero { visibility: hidden; }
+      /* preloader existe antes de qualquer CSS/JS: tela preta, conteúdo escondido até o JS ligar */
+      .preloader { position: fixed; inset: 0; z-index: 100; background: #0a0a0b; }
+      .preloader--espera > * { visibility: hidden; }
+    </style>
+    <script type="module" src="/src/main.js"></script>
+  </head>
+  <body>
+    <!-- Preloader: contorno da arma se desenha com o download, vira 3D e passa as camos -->
+    <div class="preloader preloader--espera" role="status" aria-label="Carregando">
+      <canvas class="preloader__arma" aria-hidden="true"></canvas>
+      <svg class="preloader__contorno" viewBox="135 40 751 432" preserveAspectRatio="none" aria-hidden="true">
+        <path pathLength="1" d="M222 92 L240 74 L742 72 L762 82 L766 100 L766 160 L742 168 L612 176 L602 186 L420 186 L410 180 L400 184 L246 184 L224 170 Z" />
+        <path pathLength="1" d="M252 62 H742 V72" />
+        <path pathLength="1" d="M298 74 L300 52 L310 42 L336 42 L345 52 L347 74" />
+        <path pathLength="1" d="M652 74 L655 50 L665 40 L700 40 L712 52 L712 74" />
+        <path pathLength="1" d="M245 121 H402 V158 H245 Z" />
+        <path pathLength="1" d="M226 133 H190 M190 147 H226 M195 130 H135 V150 H195 Z" />
+        <path pathLength="1" d="M412 186 L420 205 L432 220 L510 222 L522 212 L522 186" />
+        <path pathLength="1" d="M505 186 L602 186 L608 205 L600 232 L598 260 L603 300 L600 330 L522 332 L516 300 L512 250 L507 215 Z" />
+        <path pathLength="1" d="M508 332 L572 332 L568 456 L503 456 Z M497 456 L576 456 L574 472 L496 472 Z" />
+        <path pathLength="1" d="M766 112 H840 M766 134 H844" />
+        <path pathLength="1" d="M838 100 L872 100 L886 114 L886 238 L878 256 L862 256 L850 212 L842 170 L846 140 L838 128 Z" />
+      </svg>
+      <p class="preloader__nome" aria-hidden="true"></p>
+      <p class="preloader__contador"><span class="preloader__numero">000</span>%</p>
+    </div>
+
+    <main>
+      <section class="hero">
+        <!-- Fundo: topografia militar viva (WebGL) -->
+        <div class="hero__fundo" aria-hidden="true">
+          <canvas class="topo"></canvas>
+          <div class="hero__vinheta"></div>
+          <div class="hero__grao"></div>
+        </div>
+
+        <h1 class="titulo" aria-label="Pule o grind">
+          <span class="titulo__linha1" aria-hidden="true">Pule o</span>
+          <span class="titulo__caixa" aria-hidden="true">
+            <span class="titulo__grind">Grind</span>
+            <span class="titulo__barra"></span>
+          </span>
+          <!-- "부스트" = "boost" em coreano, pincelada amarela -->
+          <span class="titulo__pincel" aria-hidden="true" lang="ko"><span>부</span><span>스</span><span>트</span></span>
+        </h1>
+      </section>
+
+      <!-- Degustação das camuflagens: arma 3D flutuando, a camo troca com a rolagem -->
+      <section class="vitrine" id="camos" aria-label="Camuflagens">
+        <!-- fundo na cor da camo (degradê do centro para as bordas) -->
+        <div class="vitrine__fundo" aria-hidden="true"></div>
+        <div class="vitrine__nome" aria-hidden="true"><span>Ouro</span></div>
+        <!-- topografia viva por cima do nome: mistura os dois e muda de cor com a camo -->
+        <canvas class="vitrine__topo" aria-hidden="true"></canvas>
+        <div class="vitrine__vinheta" aria-hidden="true"></div>
+        <div class="vitrine__chao" aria-hidden="true"></div>
+        <canvas class="vitrine__canvas" aria-label="Arma em 3D: arraste para girar"></canvas>
+      </section>
+
+      <!-- Como funciona: briefing da operação (rota que se desenha com a rolagem) -->
+      <section class="missao" id="como-funciona" aria-labelledby="missao-titulo">
+        <header class="missao__cabeca">
+          <p class="missao__rotulo-caixa"><span class="missao__rotulo">Como funciona</span></p>
+          <h2 class="missao__titulo" id="missao-titulo"><span><span>Missão em</span></span><span><span>4 fases</span></span></h2>
+        </header>
+        <div class="missao__palco"></div>
+      </section>
+
+      <!-- Preços: radar além do horizonte (Coreia em nuvem de pontos) que termina dentro da loja -->
+      <section class="rumo" id="precos" aria-labelledby="rumo-titulo">
+        <canvas class="rumo__cena" aria-hidden="true"></canvas>
+        <div class="rumo__rotulos" aria-hidden="true">
+          <span class="rumo__anel">100 km</span><span class="rumo__anel">200 km</span><span class="rumo__anel">300 km</span><span class="rumo__anel">400 km</span>
+          <span class="rumo__rotulo-loja">Loja identificada</span>
+        </div>
+        <div class="rumo__painel">
+          <p class="rumo__rotulo-caixa"><span class="rumo__rotulo">Preços · Radar de loja</span></p>
+          <h2 class="rumo__titulo" id="rumo-titulo"><span><span>Rumo</span></span><span><span>à loja.</span></span></h2>
+          <div class="rumo__etapa" aria-live="polite">
+            <p class="rumo__num">01 / 04</p>
+            <h3 class="rumo__etapa-titulo">Varredura iniciada</h3>
+            <p class="rumo__etapa-texto">O radar acorda em Busan e varre a península de ponta a ponta atrás do caminho até a sua camo.</p>
+          </div>
+          <dl class="rumo__contadores">
+            <div><dt>Alcance</dt><dd><b data-cont="alcance">0</b> km</dd></div>
+            <div><dt>Abertura</dt><dd><b data-cont="abertura">0</b> graus</dd></div>
+            <div><dt>Armas cobertas</dt><dd><b data-cont="armas">0</b></dd></div>
+          </dl>
+          <a class="botao botao--amarelo" href="#loja"><span class="botao__rolo" data-texto="Ver preços"><span>Ver preços</span></span></a>
+        </div>
+        <!-- a loja, dentro da cena 3D: cartões presos aos pedestais (posição vem do JS) -->
+        <div class="rumo__loja" id="loja">
+          <header class="rumo__loja-cabeca">
+            <p class="rumo__letreiro" aria-hidden="true">Loja</p>
+            <h3 class="rumo__loja-titulo">Escolha <span>sua camo</span></h3>
+          </header>
+          <div class="rumo__vitrines"></div>
+        </div>
+      </section>
+
+    </main>
+  </body>
+</html>
