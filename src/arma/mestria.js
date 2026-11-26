@@ -18,7 +18,9 @@ export const MESTRIA = {
 const reduzir = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const pad = (n) => String(n).padStart(2, '0');
 
-export function montarMestria(secao, { amostras, aoEscolher }) {
+const CADEADO = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 11V8a4.5 4.5 0 0 1 9 0v3" /><rect x="5" y="11" width="14" height="10" rx="1.5" /><path d="M12 15v2.5" /></svg>`;
+
+export function montarMestria(secao, { amostras, aoEscolher, aoMaestria }) {
   const N = CAMOS.length;
 
   // --- trilha
@@ -38,11 +40,22 @@ export function montarMestria(secao, { amostras, aoEscolher }) {
             </span>
           </button>
         </li>`).join('')}
+      <li>
+        <button class="trilha__item trilha__item--maestria" type="button" aria-label="Camos de Maestria (abrem depois da Divergência)">
+          <span class="trilha__amostra trilha__amostra--cadeado">${CADEADO}</span>
+          <span class="trilha__textos">
+            <b>Maestria</b>
+            <small class="trilha__estado">Trancada</small>
+          </span>
+        </button>
+      </li>
     </ol>`;
   secao.appendChild(trilha);
-  const itens = [...trilha.querySelectorAll('.trilha__item')];
+  const itens = [...trilha.querySelectorAll('.trilha__item[data-i]')];
+  const itemMaestria = trilha.querySelector('.trilha__item--maestria');
   const progressoEl = trilha.querySelector('.trilha__progresso');
   itens.forEach((b) => b.addEventListener('click', () => aoEscolher(Number(b.dataset.i))));
+  itemMaestria.addEventListener('click', () => aoMaestria?.());
 
   // --- ficha
   const ficha = document.createElement('aside');
@@ -83,7 +96,7 @@ export function montarMestria(secao, { amostras, aoEscolher }) {
     const prox = CAMOS[i + 1];
     el.libera.innerHTML = prox
       ? `Libera <img src="${amostras[i + 1]}" alt="" /> <b>${prox.nome}</b>`
-      : 'Libera <b>as camos de Mestria</b>';
+      : 'Libera <b>as camos de Maestria</b>';
     const total = Math.min(d.quantidade || 0, MESTRIA.maxLosangos);
     el.losangos.innerHTML = Array.from({ length: total }, () => '<i></i>').join('');
   }
@@ -116,6 +129,11 @@ export function montarMestria(secao, { amostras, aoEscolher }) {
       b.classList.toggle('bloqueado', k > i);
       b.querySelector('.trilha__estado').textContent = k < i ? 'Liberada' : k === i ? 'Em foco' : 'Bloqueada';
     });
+    // na Divergência (a última): a Maestria fica pronta e a ficha mostra a trava
+    const final = i === N - 1;
+    itemMaestria.classList.toggle('pronta', final);
+    itemMaestria.querySelector('.trilha__estado').textContent = final ? 'Pronta' : 'Trancada';
+    ficha.classList.toggle('ficha--final', final);
 
     const d = DESAFIOS[i] || {};
     tl?.kill();
@@ -137,10 +155,10 @@ export function montarMestria(secao, { amostras, aoEscolher }) {
       .call(acenderLosangos, null, '<0.1');
   }
 
-  /** p = progresso da rolagem na seção (0..1): enche a linha da trilha */
+  /** p = 0..1 da linha (do primeiro ícone até o cadeado da Maestria) */
   function progresso(p) {
     progressoEl.style.transform = `scaleY(${Math.min(1, Math.max(0, p)).toFixed(4)})`;
   }
 
-  return { mostrar, progresso };
+  return { mostrar, progresso, trilha, ficha };
 }

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { NOISE } from '../topo.js';
+import { GLSL_MAESTRIA } from './camosMaestria.js';
 
 // Camuflagens procedurais (nenhuma imagem), tiradas das referências do jogo.
 // Cada uma é uma função no shader que devolve cor, metal, rugosidade, brilho
@@ -86,6 +87,7 @@ const GLSL_PRETAS = PECAS_PRETAS.map((c) => {
 
 const GLSL = /* glsl */ `
 uniform float uCamoA, uCamoB, uTransicao, uTempo, uVerMascara;
+uniform vec3 uCorVarredura; // cor da linha da varredura (amarela; vermelha no desbloqueio da Maestria)
 varying vec3 vCamoPos;
 varying vec3 vCamoNormal;
 ${NOISE}
@@ -208,8 +210,11 @@ Camo camoDivergencia(vec3 p, vec3 n) {
   return Camo(c, 1.0, 0.16 + h3 * 0.08, linhas * ${DIVERGENCIA.brilhoLinhas.toFixed(2)}, inclina);
 }
 
-// película iridescente (só na Divergência): espessura segue a topografia
-float irisPorId(float id) { return id > 2.5 ? 1.0 : 0.0; }
+// camos de maestria (ids 4 em diante), em camosMaestria.js
+${GLSL_MAESTRIA}
+
+// película iridescente (Divergência e algumas de maestria): espessura segue a topografia
+float irisPorId(float id) { return id > 3.5 ? irisMaestria(id) : (id > 2.5 ? 1.0 : 0.0); }
 float irisFinal(vec3 p, vec3 n) {
   float v = irisPorId(uCamoA);
   if (uTransicao > 0.0) {
@@ -229,7 +234,8 @@ float vernizPorId(float id) {
   if (id < 0.5) return ${VERNIZ.ouro.toFixed(2)};
   if (id < 1.5) return ${VERNIZ.platina.toFixed(2)};
   if (id < 2.5) return ${VERNIZ.harmonic.toFixed(2)};
-  return ${VERNIZ.divergencia.toFixed(2)};
+  if (id < 3.5) return ${VERNIZ.divergencia.toFixed(2)};
+  return vernizMaestria(id);
 }
 float vernizFinal(vec3 p, vec3 n) {
   float v = vernizPorId(uCamoA);
@@ -245,7 +251,8 @@ Camo camoPorId(float id, vec3 p, vec3 n) {
   if (id < 0.5) return camoOuro(p, n);
   if (id < 1.5) return camoPlatina(p, n);
   if (id < 2.5) return camoHarmonic(p, n);
-  return camoDivergencia(p, n);
+  if (id < 3.5) return camoDivergencia(p, n);
+  return camoMaestria(id, p, n);
 }
 
 Camo camoFinal(vec3 p, vec3 n) {
@@ -259,7 +266,7 @@ Camo camoFinal(vec3 p, vec3 n) {
     s.metal = mix(b.metal, s.metal, m);
     s.rugo = mix(b.rugo, s.rugo, m);
     s.inclina = mix(b.inclina, s.inclina, m);
-    s.brilho = mix(b.brilho, s.brilho, m) + AMARELO * faixa * ${VARREDURA.brilho.toFixed(2)};
+    s.brilho = mix(b.brilho, s.brilho, m) + uCorVarredura * faixa * ${VARREDURA.brilho.toFixed(2)};
   }
   // peças pretas (polímero fosco), iguais em todas as camos
   float preta = pecaPreta(p, n);
@@ -280,6 +287,7 @@ export function criarMateriais() {
     uTransicao: { value: 0 },
     uTempo: { value: 0 },
     uVerMascara: { value: 0 },
+    uCorVarredura: { value: new THREE.Vector3(1.0, 0.82, 0.0) }, // mesmo AMARELO do shader
   };
 
   // Physical: tem a camada de verniz (clearcoat), ligada/desligada por camo no shader
