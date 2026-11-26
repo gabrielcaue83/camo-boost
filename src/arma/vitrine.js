@@ -8,6 +8,7 @@ import { criarMateriais, CAMOS } from './camos.js';
 import { criarTopo } from '../topo.js';
 import { gerarAmostras } from './amostras.js';
 import { montarMestria } from './mestria.js';
+import { montarMaestria, MAESTRIA } from './maestria.js';
 
 gsap.registerPlugin(ScrollTrigger, SplitText);
 
@@ -17,6 +18,8 @@ gsap.registerPlugin(ScrollTrigger, SplitText);
 
 const VITRINE = {
   telasPorCamo: 0.8, // quanto de rolagem (em alturas de tela) cada camo segura a seção presa
+  trechosDivergencia: 2, // a Divergência segura mais rolagem: é onde fica a trava da Maestria
+  tremor: 0.03, // rad: a arma treme enquanto a trava da Maestria carrega
   troca: 1.0, // s: duração da varredura de uma camo para outra
   balanco: 0.42, // rad: quanto a arma balança para os lados com a rolagem (nunca fica de perfil fino)
   balancoCiclos: 1.5, // quantas idas e voltas ao longo da rolagem toda
@@ -72,7 +75,19 @@ export function iniciarVitrine(secao, { topoHero, lenis } = {}) {
     .then(({ grupo }) => { pivo.add(grupo); })
     .catch((e) => console.error('[vitrine] não carregou a arma', e));
 
-  // --- enquadramento: no celular a câmera afasta até a arma caber na largura
+  // --- enquadramento: no celular a câmera afasta até a arma caber na largura.
+  // Em modo Maestria (modo.k = 1) a arma sai do centro para dar lugar à ficha.
+  const modo = { k: 0 };
+  let ultimoK = -1;
+  const enquadrar = () => {
+    const w = canvas.clientWidth || innerWidth, h = canvas.clientHeight || innerHeight;
+    const k = modo.k, D = MAESTRIA.desloca;
+    if (k <= 0) camera.clearViewOffset();
+    else if (innerWidth <= 860) camera.setViewOffset(w, h, 0, h * D.celularY * k, w, h);
+    else camera.setViewOffset(w, h, w * D.x * k, h * D.y * k, w, h);
+    camera.updateProjectionMatrix();
+    ultimoK = k;
+  };
   const medir = () => {
     const w = canvas.clientWidth || innerWidth, h = canvas.clientHeight || innerHeight;
     renderer.setSize(w, h, false);
@@ -80,24 +95,30 @@ export function iniciarVitrine(secao, { topoHero, lenis } = {}) {
     const celular = camera.aspect < 0.9;
     const folga = celular ? VITRINE.folga.celular : VITRINE.folga.tela;
     camera.position.set(0, 0, distanciaCamera(VITRINE.fov, camera.aspect, VITRINE.comprimento, folga, 6.4 * folga / 1.18));
-    camera.updateProjectionMatrix();
+    enquadrar();
   };
   medir();
   addEventListener('resize', medir);
 
   // --- troca de camo (varredura do cano à coronha)
   const U = materiais.uniforms;
-  let atual = 0;
+  let idArma = 0; // camo que está na arma (ids do arsenal e da Maestria)
   let troca;
+  const varrer = (id, dur = VITRINE.troca) => {
+    if (id === idArma) return;
+    idArma = id;
+    troca?.progress(1); // termina a anterior na hora
+    U.uCamoB.value = id;
+    troca = gsap.fromTo(U.uTransicao, { value: 0 }, {
+      value: 1, duration: reduzir ? 0 : dur, ease: 'power2.inOut',
+      onComplete: () => { U.uCamoA.value = id; U.uTransicao.value = 0; },
+    });
+  };
+  let atual = 0;
   const trocarPara = (i) => {
     if (i === atual) return;
     atual = i;
-    troca?.progress(1); // termina a anterior na hora
-    U.uCamoB.value = i;
-    troca = gsap.fromTo(U.uTransicao, { value: 0 }, {
-      value: 1, duration: reduzir ? 0 : VITRINE.troca, ease: 'power2.inOut',
-      onComplete: () => { U.uCamoA.value = i; U.uTransicao.value = 0; },
-    });
+    varrer(CAMOS[i].id);
     trocarNome(i);
     pintarTopo(i, reduzir ? 0 : VITRINE.topoTroca);
     mestria.mostrar(i);
@@ -138,29 +159,53 @@ export function iniciarVitrine(secao, { topoHero, lenis } = {}) {
 
   // trilha de mestria + ficha do desafio (ícones gerados pelo próprio shader)
   let rolagem = null;
+  const N = CAMOS.length;
+  const trechos = N - 1 + VITRINE.trechosDivergencia; // a Divergência ocupa mais de um trecho
+  const irPara = (i) => {
+    if (!rolagem) return;
+    const meio = i < N - 1 ? i + 0.5 : N - 1 + VITRINE.trechosDivergencia / 2;
+    const alvo = rolagem.start + (rolagem.end - rolagem.start) * (meio / trechos);
+    if (lenis) lenis.scrollTo(alvo, { duration: 1.2 });
+    else scrollTo({ top: alvo, behavior: 'smooth' });
+  };
   const mestria = montarMestria(secao, {
     amostras: gerarAmostras(),
-    aoEscolher: (i) => {
-      if (!rolagem) return;
-      const alvo = rolagem.start + (rolagem.end - rolagem.start) * ((i + 0.5) / CAMOS.length);
-      if (lenis) lenis.scrollTo(alvo, { duration: 1.2 });
-      else scrollTo({ top: alvo, behavior: 'smooth' });
+    aoEscolher: irPara,
+    aoMaestria: () => { // cadeado da trilha: leva até a Divergência e chama a atenção para a trava
+      const longe = atual !== N - 1;
+      if (longe) irPara(N - 1);
+      gsap.delayedCall(longe ? 1.1 : 0, () => maestria.chamar());
     },
   });
   mestria.mostrar(0);
+
+  // Camos de Maestria: segundo estado da vitrine (abre pela trava da Divergência)
+  const maestria = montarMaestria(secao, {
+    U, varrer, modo, lenis,
+    arsenal: [secao.querySelector('.vitrine__nome'), mestria.trilha, mestria.ficha],
+    ficha: mestria.ficha,
+    aoSair: () => varrer(CAMOS[atual].id),
+  });
 
   // --- rolagem: prende a seção e cada trecho mostra uma camo
   const estado = { progresso: 0, entrada: 0 };
   rolagem = ScrollTrigger.create({
     trigger: secao,
     start: 'top top',
-    end: () => `+=${innerHeight * VITRINE.telasPorCamo * CAMOS.length}`,
+    end: () => `+=${innerHeight * VITRINE.telasPorCamo * trechos}`,
     pin: true,
     scrub: true,
     onUpdate: (st) => {
       estado.progresso = st.progress;
-      mestria.progresso(st.progress);
-      trocarPara(Math.min(CAMOS.length - 1, Math.floor(st.progress * CAMOS.length)));
+      // linha da trilha: chega até a Divergência; o trecho até o cadeado fica vazio
+      const t = st.progress * trechos;
+      mestria.progresso(Math.min(N - 1, Math.max(0, t - 0.5)) / N);
+      const i = Math.min(N - 1, Math.floor(t));
+      if (maestria.ativa()) {
+        if (i < N - 1) maestria.sair({ rapido: true }); // rolou de volta: sai da Maestria
+        else return;
+      }
+      trocarPara(i);
     },
   });
   // chegando na seção: a arma sobe e gira para a posição
@@ -172,23 +217,26 @@ export function iniciarVitrine(secao, { topoHero, lenis } = {}) {
   // --- interação: mouse inclina, arrastar gira (com inércia), depois volta
   const mouse = { x: 0, y: 0 };
   const incl = { x: 0, y: 0 };
-  const arr = { ang: 0, vel: 0, segurando: false, ultimoX: 0 };
+  const arr = { ang: 0, vel: 0, angX: 0, segurando: false, ultimoX: 0, ultimoY: 0 };
   secao.addEventListener('pointermove', (e) => {
     mouse.x = (e.clientX / innerWidth) * 2 - 1;
     mouse.y = (e.clientY / innerHeight) * 2 - 1;
     if (arr.segurando) {
-      const dx = e.clientX - arr.ultimoX;
-      arr.ultimoX = e.clientX;
+      const dx = e.clientX - arr.ultimoX, dy = e.clientY - arr.ultimoY;
+      arr.ultimoX = e.clientX; arr.ultimoY = e.clientY;
       arr.ang += dx * VITRINE.arraste.forca;
       arr.vel = dx * VITRINE.arraste.forca * 60;
+      const L = MAESTRIA.arraste.limiteX; // inclinar para cima/baixo: só em modo Maestria
+      arr.angX = Math.max(-L, Math.min(L, arr.angX + dy * MAESTRIA.arraste.forcaY * modo.k));
     }
   });
   canvas.addEventListener('pointerdown', (e) => {
     arr.segurando = true;
-    arr.ultimoX = e.clientX;
+    arr.ultimoX = e.clientX; arr.ultimoY = e.clientY;
     arr.vel = 0;
     canvas.setPointerCapture(e.pointerId);
     secao.classList.add('segurando');
+    if (maestria.ativa()) secao.classList.add('girou');
   });
   const soltar = () => { arr.segurando = false; secao.classList.remove('segurando'); };
   canvas.addEventListener('pointerup', soltar);
@@ -207,11 +255,18 @@ export function iniciarVitrine(secao, { topoHero, lenis } = {}) {
     U.uTempo.value = tempo + debug.adiantar;
 
     // arraste: inércia depois de soltar, e aos poucos volta ao ângulo da rolagem
+    const mk = modo.k;
     if (!arr.segurando) {
       arr.ang += arr.vel * dt;
       arr.vel *= Math.exp(-dt * VITRINE.arraste.atrito);
-      arr.ang *= Math.exp(-dt * VITRINE.arraste.volta);
+      // volta ao ângulo de descanso pelo caminho mais curto (giros inteiros não contam);
+      // em modo Maestria volta mais devagar (a arma é para ser girada)
+      const volta = VITRINE.arraste.volta + (MAESTRIA.arraste.volta - VITRINE.arraste.volta) * mk;
+      const voltas = Math.round(arr.ang / (Math.PI * 2)) * Math.PI * 2;
+      arr.ang = voltas + (arr.ang - voltas) * Math.exp(-dt * volta);
+      arr.angX *= Math.exp(-dt * volta * 2);
     }
+    if (mk !== ultimoK) enquadrar();
 
     const k = 1 - Math.exp(-dt * VITRINE.mouse.suavidade);
     incl.x += (mouse.x - incl.x) * k;
@@ -220,13 +275,20 @@ export function iniciarVitrine(secao, { topoHero, lenis } = {}) {
     const F = VITRINE.flutua;
     const ent = estado.entrada;
     const t = reduzir ? 0 : tempo;
+    // balanço: no arsenal segue a rolagem; na Maestria a arma vira devagar sozinha
+    const balRolagem = Math.sin(estado.progresso * Math.PI * 2 * VITRINE.balancoCiclos) * VITRINE.balanco;
+    const balTempo = Math.sin(t * Math.PI * 2 * MAESTRIA.balancoVel) * MAESTRIA.balanco;
+    // segurando a trava: a arma treme cada vez mais
+    const c = maestria.carga();
+    const tremor = reduzir ? 0 : c * c * VITRINE.tremor;
     pivo.position.y = Math.sin(t * F.vel) * F.altura - (1 - ent) * 1.2;
     pivo.rotation.set(
-      incl.y * VITRINE.mouse.x + Math.sin(t * F.vel * 0.7) * F.balanco,
-      VITRINE.giroInicial + Math.sin(estado.progresso * Math.PI * 2 * VITRINE.balancoCiclos) * VITRINE.balanco + incl.x * VITRINE.mouse.y + arr.ang - (1 - ent) * 1.4,
-      Math.sin(t * F.vel * 0.8) * F.balanco,
+      incl.y * VITRINE.mouse.x + Math.sin(t * F.vel * 0.7) * F.balanco + arr.angX + Math.sin(tempo * 61) * tremor,
+      VITRINE.giroInicial + balRolagem + (balTempo - balRolagem) * mk + incl.x * VITRINE.mouse.y + arr.ang - (1 - ent) * 1.4,
+      Math.sin(t * F.vel * 0.8) * F.balanco + Math.sin(tempo * 47) * tremor,
     );
-    pivo.scale.setScalar(0.82 + ent * 0.18);
+    const baixinho = innerWidth <= 860 && innerHeight < 760 ? MAESTRIA.encolheBaixinho * mk : 0;
+    pivo.scale.setScalar((0.82 + ent * 0.18) * (1 - baixinho));
     if (debug.pose) { pivo.position.set(0, 0, 0); pivo.rotation.set(...debug.pose); pivo.scale.setScalar(1); } // só para testes
 
     // emenda com a hero: o degradê existe enquanto a seção sobe e some quando ela prende no topo
@@ -244,11 +306,11 @@ export function iniciarVitrine(secao, { topoHero, lenis } = {}) {
     const e2 = ent * ent;
     te.deslocX = hx + (incl.x * 24 - hx) * e2;
     te.deslocY = hy + (incl.y * 16 - hy) * e2;
-    topo.quadro();
+    if (!maestria.cobrindo()) topo.quadro(); // coberta pelo fundo da Maestria, a topografia descansa
 
     if (canvas.clientWidth !== renderer.domElement.width / renderer.getPixelRatio()) medir();
     renderer.render(cena, camera);
   });
 
-  return { cena, camera, pivo, materiais, trocarPara, debug, carregado, topo };
+  return { cena, camera, pivo, materiais, trocarPara, debug, carregado, topo, maestria, modo };
 }

@@ -30,7 +30,7 @@ const pronto = document.fonts.ready.then(() => {
   iniciarComoFunciona(document.querySelector('.missao'));
   iniciarPrecos(document.querySelector('.rumo'), { lenis });
   ScrollTrigger.refresh();
-  if (import.meta.env.DEV) window.__site = { gsap, lenis, entrada: hero.entrada, vitrine, ScrollTrigger };
+  if (import.meta.env.DEV) window.__site = { gsap, lenis, entrada: hero.entrada, vitrine, maestria: vitrine.maestria, ScrollTrigger };
   return hero;
 });
 

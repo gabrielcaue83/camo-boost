@@ -68,6 +68,35 @@
         <div class="vitrine__vinheta" aria-hidden="true"></div>
         <div class="vitrine__chao" aria-hidden="true"></div>
         <canvas class="vitrine__canvas" aria-label="Arma em 3D: arraste para girar"></canvas>
+
+        <!-- Camos de Maestria: um segundo estado da própria vitrine. Abre depois da
+             Divergência, segurando a trava: a arma continua a mesma e a seção se transforma.
+             "atrás" fica embaixo da arma (fundo, nome, mira); "frente" fica por cima (textos e trilha). -->
+        <div class="maestria-atras" aria-hidden="true">
+          <div class="maestria__fundo"></div>
+          <div class="maestria__nome"><span></span></div>
+          <div class="maestria__hud">
+            <span class="maestria__canto"></span><span class="maestria__canto"></span><span class="maestria__canto"></span><span class="maestria__canto"></span>
+            <p class="maestria__telemetria"><span class="maestria__coords"></span><span>KST <b class="maestria__hora">00:00:00</b></span></p>
+          </div>
+        </div>
+        <div class="maestria-frente" id="maestria" inert>
+          <header class="maestria__cabeca">
+            <p class="maestria__rotulo-caixa"><span class="maestria__rotulo">Acesso liberado · Depois da Divergência</span></p>
+            <h2 class="maestria__titulo"><span><span>Camos de</span></span><span><span>Maestria</span></span></h2>
+            <p class="maestria__frente"></p>
+          </header>
+          <div class="maestria__painel"></div>
+          <button class="maestria__voltar" type="button"><span aria-hidden="true">←</span> Voltar ao arsenal</button>
+          <p class="maestria__dica" aria-hidden="true">Arraste para girar</p>
+        </div>
+
+        <!-- tela do desbloqueio: apaga tudo por um instante e mostra 해제 ("liberado") -->
+        <div class="desbloqueio" aria-hidden="true">
+          <p class="desbloqueio__hangul" lang="ko"><span>해</span><span>제</span></p>
+          <p class="desbloqueio__linha desbloqueio__titulo">Acesso concedido</p>
+          <p class="desbloqueio__linha desbloqueio__sub"></p>
+        </div>
       </section>
 
       <!-- Como funciona: briefing da operação (rota que se desenha com a rolagem) -->
